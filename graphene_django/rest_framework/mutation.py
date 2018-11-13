@@ -2,6 +2,8 @@ from collections import OrderedDict
 
 from django.shortcuts import get_object_or_404
 
+from rest_framework.fields import SkipField
+
 import graphene
 from graphene.types import Field, InputField
 from graphene.types.mutation import MutationOptions
@@ -19,7 +21,9 @@ class SerializerMutationOptions(MutationOptions):
     serializer_class = None
 
 
-def fields_for_serializer(serializer, only_fields, exclude_fields, is_input=False):
+def fields_for_serializer(
+    serializer, lookup_field, only_fields, exclude_fields, is_input=False
+):
     fields = OrderedDict()
     for name, field in serializer.fields.items():
         is_not_in_only = only_fields and name not in only_fields
@@ -32,7 +36,12 @@ def fields_for_serializer(serializer, only_fields, exclude_fields, is_input=Fals
         if is_not_in_only or is_excluded:
             continue
 
-        fields[name] = convert_serializer_field(field, is_input=is_input)
+        converted_field = convert_serializer_field(
+            field, lookup_field=lookup_field, is_input=is_input
+        )
+
+        if converted_field:
+            fields[name] = converted_field
     return fields
 
 
@@ -72,10 +81,10 @@ class SerializerMutation(ClientIDMutation):
             lookup_field = model_class._meta.pk.name
 
         input_fields = fields_for_serializer(
-            serializer, only_fields, exclude_fields, is_input=True
+            serializer, lookup_field, only_fields, exclude_fields, is_input=True
         )
         output_fields = fields_for_serializer(
-            serializer, only_fields, exclude_fields, is_input=False
+            serializer, lookup_field, only_fields, exclude_fields, is_input=False
         )
 
         _meta = SerializerMutationOptions(cls)
@@ -138,6 +147,10 @@ class SerializerMutation(ClientIDMutation):
 
         kwargs = {}
         for f, field in serializer.fields.items():
-            kwargs[f] = field.get_attribute(obj)
+            if not field.write_only:
+                try:
+                    kwargs[f] = field.get_attribute(obj)
+                except SkipField:
+                    pass
 
         return cls(errors=None, **kwargs)
