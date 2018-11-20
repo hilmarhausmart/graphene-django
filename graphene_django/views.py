@@ -3,7 +3,7 @@ import json
 import re
 
 import six
-from django.http import HttpResponse, HttpResponseNotAllowed
+from django.http import HttpResponseNotAllowed
 from django.http.response import HttpResponseBadRequest
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
@@ -17,6 +17,7 @@ from graphql.execution import ExecutionResult
 from graphql.type.schema import GraphQLSchema
 
 from .settings import graphene_settings
+from .response import Response
 
 
 class HttpError(Exception):
@@ -150,8 +151,8 @@ class GraphQLView(View):
                     result=result or "",
                 )
 
-            return HttpResponse(
-                status=status_code, content=result, content_type="application/json"
+            return Response(
+                data=result, status=status_code, content_type="application/json"
             )
 
         except HttpError as e:
