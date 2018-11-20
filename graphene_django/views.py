@@ -18,13 +18,7 @@ from graphql.type.schema import GraphQLSchema
 
 from .settings import graphene_settings
 from .response import Response
-
-
-class HttpError(Exception):
-    def __init__(self, response, message=None, *args, **kwargs):
-        self.response = response
-        self.message = message = message or response.content.decode()
-        super(HttpError, self).__init__(message, *args, **kwargs)
+from .exceptions import GraphQLAPIException
 
 
 def get_accepted_content_types(request):
@@ -116,7 +110,7 @@ class GraphQLView(View):
     def dispatch(self, request, *args, **kwargs):
         try:
             if request.method.lower() not in ("get", "post"):
-                raise HttpError(
+                raise GraphQLAPIException(
                     HttpResponseNotAllowed(
                         ["GET", "POST"], "GraphQL only supports GET and POST requests."
                     )
@@ -155,7 +149,7 @@ class GraphQLView(View):
                 data=result, status=status_code, content_type="application/json"
             )
 
-        except HttpError as e:
+        except GraphQLAPIException as e:
             response = e.response
             response["Content-Type"] = "application/json"
             response.content = self.json_encode(
@@ -214,7 +208,7 @@ class GraphQLView(View):
             try:
                 body = request.body.decode("utf-8")
             except Exception as e:
-                raise HttpError(HttpResponseBadRequest(str(e)))
+                raise GraphQLAPIException(HttpResponseBadRequest(str(e)))
 
             try:
                 request_json = json.loads(body)
@@ -231,9 +225,9 @@ class GraphQLView(View):
                     ), "The received data is not a valid JSON query."
                 return request_json
             except AssertionError as e:
-                raise HttpError(HttpResponseBadRequest(str(e)))
+                raise GraphQLAPIException(HttpResponseBadRequest(str(e)))
             except (TypeError, ValueError):
-                raise HttpError(HttpResponseBadRequest("POST body sent invalid JSON."))
+                raise GraphQLAPIException(HttpResponseBadRequest("POST body sent invalid JSON."))
 
         elif content_type in [
             "application/x-www-form-urlencoded",
@@ -249,7 +243,7 @@ class GraphQLView(View):
         if not query:
             if show_graphiql:
                 return None
-            raise HttpError(HttpResponseBadRequest("Must provide query string."))
+            raise GraphQLAPIException(HttpResponseBadRequest("Must provide query string."))
 
         try:
             backend = self.get_backend(request)
@@ -263,7 +257,7 @@ class GraphQLView(View):
                 if show_graphiql:
                     return None
 
-                raise HttpError(
+                raise GraphQLAPIException(
                     HttpResponseNotAllowed(
                         ["POST"],
                         "Can only perform a {} operation from a POST request.".format(
@@ -324,7 +318,7 @@ class GraphQLView(View):
             try:
                 variables = json.loads(variables)
             except Exception:
-                raise HttpError(HttpResponseBadRequest("Variables are invalid JSON."))
+                raise GraphQLAPIException(HttpResponseBadRequest("Variables are invalid JSON."))
 
         operation_name = request.GET.get("operationName") or data.get("operationName")
         if operation_name == "null":
