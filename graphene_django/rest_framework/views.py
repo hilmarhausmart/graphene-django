@@ -78,7 +78,7 @@ class GraphQLAPIView(APIView):
 
         self.graphene_schema = self.graphene_schema or graphene_schema
         if graphene_middleware is not None:
-            self.middleware = list(instantiate_middleware(graphene_middleware))
+            self.graphene_middleware = list(instantiate_middleware(graphene_middleware))
         self.graphene_executor = graphene_executor
         self.graphene_root_value = graphene_root_value
         self.graphene_pretty = self.graphene_pretty or graphene_pretty
