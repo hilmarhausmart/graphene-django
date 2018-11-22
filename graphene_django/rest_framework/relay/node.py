@@ -12,5 +12,5 @@ class NodeField(graphene_node.NodeField):
 
 class Node(graphene_node.Node):
     @classmethod
-    def Field(cls, permission_classes=None, *args, **kwargs):  # noqa: N802
-        return NodeField(cls, permission_classes=permission_classes, *args, **kwargs)
+    def Field(cls, *args, **kwargs):  # noqa: N802
+        return NodeField(cls, *args, **kwargs)
