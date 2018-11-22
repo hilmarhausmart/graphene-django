@@ -56,7 +56,9 @@ def test_should_query_field():
     }
     schema = graphene.Schema(query=Query)
     result = schema.execute(
-        query, context_value=context(), middleware=[DjangoDebugMiddleware()]
+        query,
+        context_value={"view": None, "request": context()},
+        middleware=[DjangoDebugMiddleware()],
     )
     assert not result.errors
     assert result.data == expected
@@ -98,7 +100,9 @@ def test_should_query_list():
     }
     schema = graphene.Schema(query=Query)
     result = schema.execute(
-        query, context_value=context(), middleware=[DjangoDebugMiddleware()]
+        query,
+        context_value={"view": None, "request": context()},
+        middleware=[DjangoDebugMiddleware()],
     )
     assert not result.errors
     assert result.data == expected
@@ -141,7 +145,9 @@ def test_should_query_connection():
     expected = {"allReporters": {"edges": [{"node": {"lastName": "ABA"}}]}}
     schema = graphene.Schema(query=Query)
     result = schema.execute(
-        query, context_value=context(), middleware=[DjangoDebugMiddleware()]
+        query,
+        context_value={"view": None, "request": context()},
+        middleware=[DjangoDebugMiddleware()],
     )
     assert not result.errors
     assert result.data["allReporters"] == expected["allReporters"]
@@ -190,7 +196,9 @@ def test_should_query_connectionfilter():
     expected = {"allReporters": {"edges": [{"node": {"lastName": "ABA"}}]}}
     schema = graphene.Schema(query=Query)
     result = schema.execute(
-        query, context_value=context(), middleware=[DjangoDebugMiddleware()]
+        query,
+        context_value={"view": None, "request": context()},
+        middleware=[DjangoDebugMiddleware()],
     )
     assert not result.errors
     assert result.data["allReporters"] == expected["allReporters"]

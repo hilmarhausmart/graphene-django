@@ -1,21 +1,33 @@
 import graphene
 from graphene import ObjectType, Schema
 
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from ..rest_framework.decorators import resolver_permission_classes
 
 class QueryRoot(ObjectType):
 
     thrower = graphene.String(required=True)
     request = graphene.String(required=True)
     test = graphene.String(who=graphene.String())
+    permission = graphene.String()
+    authentication = graphene.String()
 
     def resolve_thrower(self, info):
         raise Exception("Throws!")
 
     def resolve_request(self, info):
-        return info.context.GET.get("q")
+        return info.context.get('request').GET.get("q")
 
     def resolve_test(self, info, who=None):
         return "Hello %s" % (who or "World")
+
+    @resolver_permission_classes([IsAuthenticated])
+    def resolve_authentication(self, info):
+        return "Is authenticated"
+
+    @resolver_permission_classes([IsAdminUser])
+    def resolve_permission(self, info):
+        return "Permission granted"
 
 
 class MutationRoot(ObjectType):

@@ -22,6 +22,9 @@ from .parsers import GraphQLJSONParser, GraphQLParser
 
 
 def exception_handler(exc, context):
+    #if isinstance(exc, GraphQLError):
+    #    exc = exceptions.NotFound()
+
     response = rest_framework_exception_handler(exc, context)
 
     if response and hasattr(response, "data"):
@@ -101,7 +104,10 @@ class GraphQLAPIView(APIView):
         return self.graphene_middleware
 
     def get_graphene_context(self, request):
-        return request
+        return {
+            'view': self,
+            'request': request,
+        }
 
     def get_graphene_backend(self, request):
         return self.graphene_backend
