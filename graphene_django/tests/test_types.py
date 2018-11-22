@@ -4,6 +4,7 @@ from graphene import Interface, ObjectType, Schema, Connection, String
 from graphene.relay import Node
 
 from .. import registry
+from ..connection import DjangoConnection
 from ..types import DjangoObjectType, DjangoObjectTypeOptions
 from .models import Article as ArticleModel
 from .models import Reporter as ReporterModel
@@ -18,7 +19,7 @@ class Reporter(DjangoObjectType):
         model = ReporterModel
 
 
-class ArticleConnection(Connection):
+class ArticleConnection(DjangoConnection):
     """Article Connection"""
 
     test = String()
@@ -128,6 +129,7 @@ type ArticleConnection {
   pageInfo: PageInfo!
   edges: [ArticleEdge]!
   test: String
+  totalCount: Int!
 }
 
 type ArticleEdge {

@@ -2,10 +2,11 @@ from collections import OrderedDict
 
 from django.utils.functional import SimpleLazyObject
 from graphene import Field
-from graphene.relay import Connection, Node
+from graphene.relay import Node
 from graphene.types.objecttype import ObjectType, ObjectTypeOptions
 from graphene.types.utils import yank_fields_from_attrs
 
+from .connection import DjangoConnection
 from .converter import convert_django_field_with_choices
 from .registry import Registry, get_global_registry
 from .utils import DJANGO_FILTER_INSTALLED, get_model_fields, is_valid_django_model
@@ -84,14 +85,14 @@ class DjangoObjectType(ObjectType):
         if use_connection and not connection:
             # We create the connection automatically
             if not connection_class:
-                connection_class = Connection
+                connection_class = DjangoConnection
 
             connection = connection_class.create_type(
                 "{}Connection".format(cls.__name__), node=cls
             )
 
         if connection is not None:
-            assert issubclass(connection, Connection), (
+            assert issubclass(connection, DjangoConnection), (
                 "The connection must be a Connection. Received {}"
             ).format(connection.__name__)
 

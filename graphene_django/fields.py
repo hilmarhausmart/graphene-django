@@ -99,6 +99,7 @@ class DjangoConnectionField(ConnectionField):
         )
         connection.iterable = iterable
         connection.length = _len
+        connection.total_count = _len
         return connection
 
     @classmethod
