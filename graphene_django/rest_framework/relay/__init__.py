@@ -1,5 +1,5 @@
-from .node import Node
+from .node import DjangoNode
 
 __all__ = [
-    "Node",
+    "DjangoNode",
 ]
