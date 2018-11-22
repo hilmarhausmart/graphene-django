@@ -93,7 +93,7 @@ class DjangoObjectType(ObjectType):
 
         if connection is not None:
             assert issubclass(connection, DjangoConnection), (
-                "The connection must be a Connection. Received {}"
+                "The connection must be a DjangoConnection. Received {}"
             ).format(connection.__name__)
 
         if not _meta:
