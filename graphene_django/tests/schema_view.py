@@ -1,7 +1,11 @@
 import graphene
 from graphene import ObjectType, Schema
 
+from rest_framework import serializers
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
+
+from .models import Pet
+from ..rest_framework.mutation import SerializerMutation
 from ..rest_framework.decorators import resolver_permission_classes
 
 class QueryRoot(ObjectType):
@@ -30,8 +34,20 @@ class QueryRoot(ObjectType):
         return "Permission granted"
 
 
+class PetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Pet
+        fields = "__all__"
+
+
+class PetMutation(SerializerMutation):
+    class Meta:
+        serializer_class = PetSerializer
+
+
 class MutationRoot(ObjectType):
     write_test = graphene.Field(QueryRoot)
+    write_serializer = PetMutation.Field()
 
     def resolve_write_test(self, info):
         return QueryRoot()

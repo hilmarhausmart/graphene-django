@@ -7,9 +7,9 @@ from rest_framework.fields import SkipField
 import graphene
 from graphene.types import Field, InputField
 from graphene.types.mutation import MutationOptions
-from graphene.relay.mutation import ClientIDMutation
 from graphene.types.objecttype import yank_fields_from_attrs
 
+from ..mutation import DjangoClientIDMutation
 from .serializer_converter import convert_serializer_field
 from .types import ErrorType
 
@@ -45,7 +45,7 @@ def fields_for_serializer(
     return fields
 
 
-class SerializerMutation(ClientIDMutation):
+class SerializerMutation(DjangoClientIDMutation):
     class Meta:
         abstract = True
 

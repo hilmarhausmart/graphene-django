@@ -15,6 +15,20 @@ from rest_framework.exceptions import PermissionDenied
 from .settings import graphene_settings
 from .utils import maybe_queryset
 
+from graphene.types.field import Field
+
+
+class DjangoField(Field):
+    def __init__(self, *args, **kwargs):
+        self.permission_classes = kwargs.pop("permission_classes", None)
+        super(DjangoField, self).__init__(*args, **kwargs)
+
+    def get_resolver(self, parent_resolver):
+        return partial(
+            self.resolver or parent_resolver,
+            self.permission_classes,
+        )
+
 
 class DjangoListField(Field):
     def __init__(self, _type, *args, **kwargs):
@@ -121,7 +135,11 @@ class DjangoConnectionField(ConnectionField):
         **args
     ):
         if not permission_classes:
-            if hasattr(info, "context") and info.context and info.context.get("view", None):
+            if (
+                hasattr(info, "context")
+                and info.context
+                and info.context.get("view", None)
+            ):
                 permission_classes = info.context.get(
                     "view"
                 ).resolver_permission_classes
