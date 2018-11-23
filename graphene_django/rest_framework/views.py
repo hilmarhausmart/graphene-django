@@ -10,6 +10,7 @@ from graphql.execution import ExecutionResult
 from graphql.type.schema import GraphQLSchema
 
 from rest_framework import exceptions
+from rest_framework.settings import api_settings
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.views import exception_handler as rest_framework_exception_handler
@@ -22,7 +23,7 @@ from .parsers import GraphQLJSONParser, GraphQLParser
 
 
 def exception_handler(exc, context):
-    #if isinstance(exc, GraphQLError):
+    # if isinstance(exc, GraphQLError):
     #    exc = exceptions.NotFound()
 
     response = rest_framework_exception_handler(exc, context)
@@ -58,6 +59,8 @@ class GraphQLAPIView(APIView):
 
     renderer_classes = (JSONRenderer, TemplateHTMLRenderer)
     parser_classes = (GraphQLJSONParser, GraphQLParser, FormParser, MultiPartParser)
+
+    resolver_permission_classes = api_settings.DEFAULT_PERMISSION_CLASSES
 
     def __init__(
         self,
@@ -104,10 +107,7 @@ class GraphQLAPIView(APIView):
         return self.graphene_middleware
 
     def get_graphene_context(self, request):
-        return {
-            'view': self,
-            'request': request,
-        }
+        return {"view": self, "request": request}
 
     def get_graphene_backend(self, request):
         return self.graphene_backend
@@ -118,7 +118,9 @@ class GraphQLAPIView(APIView):
         """
         renderer_context = super(GraphQLAPIView, self).get_renderer_context()
 
-        if self.graphene_pretty or renderer_context.get('request').GET.get('pretty', False):
+        if self.graphene_pretty or renderer_context.get("request").GET.get(
+            "pretty", False
+        ):
             renderer_context["indent"] = 2
 
         return renderer_context
@@ -146,9 +148,7 @@ class GraphQLAPIView(APIView):
             except Exception:
                 raise exceptions.ParseError({"message": "Variables are invalid JSON."})
 
-        operation_name = request.GET.get("operationName") or data.get(
-            "operationName"
-        )
+        operation_name = request.GET.get("operationName") or data.get("operationName")
         if operation_name == "null":
             operation_name = None
 
@@ -213,7 +213,9 @@ class GraphQLAPIView(APIView):
         return self.process_request(request, format)
 
     def process_request(self, request, format=None):
-        show_graphiql = self.graphiql and self.can_display_graphiql(request, request.data)
+        show_graphiql = self.graphiql and self.can_display_graphiql(
+            request, request.data
+        )
 
         if self.graphene_batch:
             responses = [self.get_response(request, entry) for entry in request.data]
@@ -222,10 +224,14 @@ class GraphQLAPIView(APIView):
                 responses and max(responses, key=lambda response: response[1])[1] or 200
             )
         else:
-            result, status_code = self.get_response(request, request.data, show_graphiql)
+            result, status_code = self.get_response(
+                request, request.data, show_graphiql
+            )
 
         if show_graphiql:
-            query, variables, operation_name, id = self.get_graphql_params(request, request.data)
+            query, variables, operation_name, id = self.get_graphql_params(
+                request, request.data
+            )
             return Response(
                 {
                     "graphiql_version": self.graphiql_version,

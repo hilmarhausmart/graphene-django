@@ -106,10 +106,7 @@ class GraphQLView(View):
         return self.middleware
 
     def get_context(self, request):
-        return {
-            'view': self,
-            'request': request,
-        }
+        return {"view": self, "request": request}
 
     def get_backend(self, request):
         return self.backend

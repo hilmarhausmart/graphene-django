@@ -82,6 +82,7 @@ class DjangoFilterConnectionField(DjangoConnectionField):
         default_manager,
         max_limit,
         enforce_first_or_last,
+        permission_classes,
         filterset_class,
         filtering_args,
         root,
@@ -101,6 +102,7 @@ class DjangoFilterConnectionField(DjangoConnectionField):
             qs,
             max_limit,
             enforce_first_or_last,
+            permission_classes,
             root,
             info,
             **args
@@ -114,6 +116,7 @@ class DjangoFilterConnectionField(DjangoConnectionField):
             self.get_manager(),
             self.max_limit,
             self.enforce_first_or_last,
+            self.permission_classes,
             self.filterset_class,
             self.filtering_args,
         )

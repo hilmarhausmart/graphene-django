@@ -1,3 +1,5 @@
+import warnings
+
 from functools import partial
 
 from django.db.models.query import QuerySet
@@ -7,6 +9,8 @@ from promise import Promise
 from graphene.types import Field, List
 from graphene.relay import ConnectionField, PageInfo
 from graphql_relay.connection.arrayconnection import connection_from_list_slice
+
+from rest_framework.exceptions import PermissionDenied
 
 from .settings import graphene_settings
 from .utils import maybe_queryset
@@ -38,6 +42,7 @@ class DjangoConnectionField(ConnectionField):
             "enforce_first_or_last",
             graphene_settings.RELAY_CONNECTION_ENFORCE_FIRST_OR_LAST,
         )
+        self.permission_classes = kwargs.pop("permission_classes", None)
         super(DjangoConnectionField, self).__init__(*args, **kwargs)
 
     @property
@@ -110,10 +115,30 @@ class DjangoConnectionField(ConnectionField):
         default_manager,
         max_limit,
         enforce_first_or_last,
+        permission_classes,
         root,
         info,
         **args
     ):
+        if not permission_classes:
+            if hasattr(info, "context") and info.context and info.context.get("view", None):
+                permission_classes = info.context.get(
+                    "view"
+                ).resolver_permission_classes
+            else:
+                warnings.warn(
+                    UserWarning(
+                        "DjangoConnectionField should not be called without context."
+                    )
+                )
+
+        if permission_classes:
+            for permission in [p() for p in permission_classes]:
+                if not permission.has_permission(
+                    info.context.get("request"), info.context.get("view")
+                ):
+                    raise PermissionDenied(detail=getattr(permission, "message", None))
+
         first = args.get("first")
         last = args.get("last")
 
@@ -151,4 +176,5 @@ class DjangoConnectionField(ConnectionField):
             self.get_manager(),
             self.max_limit,
             self.enforce_first_or_last,
+            self.permission_classes,
         )

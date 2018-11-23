@@ -9,8 +9,6 @@ from ..middleware import DjangoDebugMiddleware
 from ..types import DjangoDebug
 
 
-class context(object):
-    pass
 
 
 # from examples.starwars_django.models import Character
@@ -18,7 +16,7 @@ class context(object):
 pytestmark = pytest.mark.django_db
 
 
-def test_should_query_field():
+def test_should_query_field(info_with_context):
     r1 = Reporter(last_name="ABA")
     r1.save()
     r2 = Reporter(last_name="Griffin")
@@ -57,14 +55,14 @@ def test_should_query_field():
     schema = graphene.Schema(query=Query)
     result = schema.execute(
         query,
-        context_value={"view": None, "request": context()},
+        context_value=info_with_context().context,
         middleware=[DjangoDebugMiddleware()],
     )
     assert not result.errors
     assert result.data == expected
 
 
-def test_should_query_list():
+def test_should_query_list(info_with_context):
     r1 = Reporter(last_name="ABA")
     r1.save()
     r2 = Reporter(last_name="Griffin")
@@ -101,14 +99,14 @@ def test_should_query_list():
     schema = graphene.Schema(query=Query)
     result = schema.execute(
         query,
-        context_value={"view": None, "request": context()},
+        context_value=info_with_context().context,
         middleware=[DjangoDebugMiddleware()],
     )
     assert not result.errors
     assert result.data == expected
 
 
-def test_should_query_connection():
+def test_should_query_connection(info_with_context):
     r1 = Reporter(last_name="ABA")
     r1.save()
     r2 = Reporter(last_name="Griffin")
@@ -146,7 +144,7 @@ def test_should_query_connection():
     schema = graphene.Schema(query=Query)
     result = schema.execute(
         query,
-        context_value={"view": None, "request": context()},
+        context_value=info_with_context().context,
         middleware=[DjangoDebugMiddleware()],
     )
     assert not result.errors
@@ -156,7 +154,7 @@ def test_should_query_connection():
     assert result.data["__debug"]["sql"][1]["rawSql"] == query
 
 
-def test_should_query_connectionfilter():
+def test_should_query_connectionfilter(info_with_context):
     from ...filter import DjangoFilterConnectionField
 
     r1 = Reporter(last_name="ABA")
@@ -197,7 +195,7 @@ def test_should_query_connectionfilter():
     schema = graphene.Schema(query=Query)
     result = schema.execute(
         query,
-        context_value={"view": None, "request": context()},
+        context_value=info_with_context().context,
         middleware=[DjangoDebugMiddleware()],
     )
     assert not result.errors
