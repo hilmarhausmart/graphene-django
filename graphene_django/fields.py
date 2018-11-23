@@ -26,7 +26,7 @@ class DjangoField(Field):
     def get_resolver(self, parent_resolver):
         return partial(
             self.resolver or parent_resolver,
-            self.permission_classes,
+            permission_classes=self.permission_classes,
         )
 
 
