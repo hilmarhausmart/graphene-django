@@ -18,33 +18,35 @@ from .utils import maybe_queryset
 from graphene.types.field import Field
 
 
+def check_permission_classes(info, field, permission_classes):
+    if not permission_classes:
+        if hasattr(info, "context") and info.context and info.context.get("view", None):
+            permission_classes = info.context.get("view").resolver_permission_classes
+        else:
+            warnings.warn(
+                UserWarning(
+                    "{} should not be called without context.".format(field.__name__)
+                )
+            )
+
+    if permission_classes:
+        for permission in [p() for p in permission_classes]:
+            if not permission.has_permission(
+                info.context.get("request"), info.context.get("view")
+            ):
+                raise PermissionDenied(detail=getattr(permission, "message", None))
+
+
 class DjangoField(Field):
     def __init__(self, *args, **kwargs):
         self.permission_classes = kwargs.pop("permission_classes", None)
         super(DjangoField, self).__init__(*args, **kwargs)
 
-    @staticmethod
-    def field_resolver(resolver, root, info, permission_classes=None, *args, **kwargs):
-        if not permission_classes:
-            if (
-                hasattr(info, "context")
-                and info.context
-                and info.context.get("view", None)
-            ):
-                permission_classes = info.context.get(
-                    "view"
-                ).resolver_permission_classes
-            else:
-                warnings.warn(
-                    UserWarning("DjangoField should not be called without context.")
-                )
-
-        if permission_classes:
-            for permission in [p() for p in permission_classes]:
-                if not permission.has_permission(
-                    info.context.get("request"), info.context.get("view")
-                ):
-                    raise PermissionDenied(detail=getattr(permission, "message", None))
+    @classmethod
+    def field_resolver(
+        cls, resolver, root, info, permission_classes=None, *args, **kwargs
+    ):
+        check_permission_classes(info, cls, permission_classes)
 
         return resolver(root, info, *args, **kwargs)
 
@@ -65,29 +67,10 @@ class DjangoListField(Field):
     def model(self):
         return self.type.of_type._meta.node._meta.model
 
-    @staticmethod
-    def list_resolver(resolver, root, info, permission_classes=None, **args):
-        if not permission_classes:
-            if (
-                hasattr(info, "context")
-                and info.context
-                and info.context.get("view", None)
-            ):
-                permission_classes = info.context.get(
-                    "view"
-                ).resolver_permission_classes
-            else:
-                warnings.warn(
-                    UserWarning("DjangoListField should not be called without context.")
-                )
-
-        if permission_classes:
-            for permission in [p() for p in permission_classes]:
-                if not permission.has_permission(
-                    info.context.get("request"), info.context.get("view")
-                ):
-                    raise PermissionDenied(detail=getattr(permission, "message", None))
-
+    @classmethod
+    def list_resolver(cls, resolver, root, info, permission_classes=None, **args):
+        check_permission_classes(info, cls, permission_classes)
+        
         return maybe_queryset(resolver(root, info, **args))
 
     def get_resolver(self, parent_resolver):
@@ -186,29 +169,8 @@ class DjangoConnectionField(ConnectionField):
         info,
         **args
     ):
-        if not permission_classes:
-            if (
-                hasattr(info, "context")
-                and info.context
-                and info.context.get("view", None)
-            ):
-                permission_classes = info.context.get(
-                    "view"
-                ).resolver_permission_classes
-            else:
-                warnings.warn(
-                    UserWarning(
-                        "DjangoConnectionField should not be called without context."
-                    )
-                )
-
-        if permission_classes:
-            for permission in [p() for p in permission_classes]:
-                if not permission.has_permission(
-                    info.context.get("request"), info.context.get("view")
-                ):
-                    raise PermissionDenied(detail=getattr(permission, "message", None))
-
+        check_permission_classes(info, cls, permission_classes)
+        
         first = args.get("first")
         last = args.get("last")
 
