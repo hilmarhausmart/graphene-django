@@ -22,7 +22,9 @@ def mock_info():
         root_value=None,
         operation=None,
         variable_values=None,
-        context=None,
+        context={
+            'request': None,
+        },
     )
 
 
@@ -195,6 +197,7 @@ def test_model_mutate_and_get_payload_error():
     # missing required fields
     result = MyModelMutation.mutate_and_get_payload(None, mock_info(), **{})
     assert len(result.errors) > 0
+    assert result.errors[0].field == 'writeModel'
 
 
 def test_invalid_serializer_operations():

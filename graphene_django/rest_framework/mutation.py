@@ -8,6 +8,7 @@ import graphene
 from graphene.types import Field, InputField
 from graphene.types.mutation import MutationOptions
 from graphene.types.objecttype import yank_fields_from_attrs
+from graphene.utils.str_converters import to_camel_case
 
 from ..mutation import DjangoClientIDMutation
 from .serializer_converter import convert_serializer_field
@@ -121,10 +122,10 @@ class SerializerMutation(DjangoClientIDMutation):
             return {
                 "instance": instance,
                 "data": input,
-                "context": {"request": info.context},
+                "context": {"request": info.context.get('request', None)},
             }
 
-        return {"data": input, "context": {"request": info.context}}
+        return {"data": input, "context": {"request": info.context.get('request', None)}}
 
     @classmethod
     def mutate_and_get_payload(cls, root, info, **input):
@@ -135,7 +136,7 @@ class SerializerMutation(DjangoClientIDMutation):
             return cls.perform_mutate(serializer, info)
         else:
             errors = [
-                ErrorType(field=key, messages=value)
+                ErrorType(field=to_camel_case(key), messages=value)
                 for key, value in serializer.errors.items()
             ]
 
