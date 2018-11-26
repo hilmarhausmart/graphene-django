@@ -26,15 +26,17 @@ class DjangoField(Field):
     @staticmethod
     def field_resolver(resolver, root, info, permission_classes=None, *args, **kwargs):
         if not permission_classes:
-            if hasattr(info, "context") and info.context and info.context.get("view", None):
+            if (
+                hasattr(info, "context")
+                and info.context
+                and info.context.get("view", None)
+            ):
                 permission_classes = info.context.get(
                     "view"
                 ).resolver_permission_classes
             else:
                 warnings.warn(
-                    UserWarning(
-                        "DjangoField should not be called without context."
-                    )
+                    UserWarning("DjangoField should not be called without context.")
                 )
 
         if permission_classes:
@@ -56,6 +58,7 @@ class DjangoField(Field):
 
 class DjangoListField(Field):
     def __init__(self, _type, *args, **kwargs):
+        self.permission_classes = kwargs.pop("permission_classes", None)
         super(DjangoListField, self).__init__(List(_type), *args, **kwargs)
 
     @property
@@ -63,11 +66,36 @@ class DjangoListField(Field):
         return self.type.of_type._meta.node._meta.model
 
     @staticmethod
-    def list_resolver(resolver, root, info, **args):
+    def list_resolver(resolver, root, info, permission_classes=None, **args):
+        if not permission_classes:
+            if (
+                hasattr(info, "context")
+                and info.context
+                and info.context.get("view", None)
+            ):
+                permission_classes = info.context.get(
+                    "view"
+                ).resolver_permission_classes
+            else:
+                warnings.warn(
+                    UserWarning("DjangoListField should not be called without context.")
+                )
+
+        if permission_classes:
+            for permission in [p() for p in permission_classes]:
+                if not permission.has_permission(
+                    info.context.get("request"), info.context.get("view")
+                ):
+                    raise PermissionDenied(detail=getattr(permission, "message", None))
+
         return maybe_queryset(resolver(root, info, **args))
 
     def get_resolver(self, parent_resolver):
-        return partial(self.list_resolver, parent_resolver)
+        return partial(
+            self.list_resolver,
+            parent_resolver,
+            permission_classes=self.permission_classes,
+        )
 
 
 class DjangoConnectionField(ConnectionField):
