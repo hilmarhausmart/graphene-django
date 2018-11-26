@@ -23,8 +23,32 @@ class DjangoField(Field):
         self.permission_classes = kwargs.pop("permission_classes", None)
         super(DjangoField, self).__init__(*args, **kwargs)
 
+    @staticmethod
+    def field_resolver(resolver, root, info, permission_classes=None, *args, **kwargs):
+        if not permission_classes:
+            if hasattr(info, "context") and info.context and info.context.get("view", None):
+                permission_classes = info.context.get(
+                    "view"
+                ).resolver_permission_classes
+            else:
+                warnings.warn(
+                    UserWarning(
+                        "DjangoField should not be called without context."
+                    )
+                )
+
+        if permission_classes:
+            for permission in [p() for p in permission_classes]:
+                if not permission.has_permission(
+                    info.context.get("request"), info.context.get("view")
+                ):
+                    raise PermissionDenied(detail=getattr(permission, "message", None))
+
+        return resolver(root, info, *args, **kwargs)
+
     def get_resolver(self, parent_resolver):
         return partial(
+            self.field_resolver,
             self.resolver or parent_resolver,
             permission_classes=self.permission_classes,
         )
