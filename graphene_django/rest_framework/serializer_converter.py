@@ -18,7 +18,7 @@ def get_graphene_type_from_serializer_field(field):
     )
 
 
-def convert_serializer_field(field, lookup_field=None, is_input=True):
+def convert_serializer_field(field, is_input=True):
     """
     Converts a django rest frameworks field to a graphql field
     and marks the field as required if we are creating an input type
@@ -26,7 +26,7 @@ def convert_serializer_field(field, lookup_field=None, is_input=True):
     """
     graphql_type = get_graphene_type_from_serializer_field(field)
 
-    if is_input and field.read_only and not lookup_field == field.field_name:
+    if is_input and field.read_only:
         return None
 
     if not is_input and field.write_only:

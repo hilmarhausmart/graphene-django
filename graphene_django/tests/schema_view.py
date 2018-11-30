@@ -5,7 +5,7 @@ from rest_framework import serializers
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 
 from .models import Pet
-from ..rest_framework.mutation import SerializerMutation
+from ..rest_framework.mutation import SerializerCreateMutation
 from ..rest_framework.decorators import resolver_permission_classes
 
 class QueryRoot(ObjectType):
@@ -40,7 +40,7 @@ class PetSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class PetMutation(SerializerMutation):
+class PetMutation(SerializerCreateMutation):
     class Meta:
         serializer_class = PetSerializer
 

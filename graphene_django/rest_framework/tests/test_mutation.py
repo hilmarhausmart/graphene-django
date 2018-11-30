@@ -1,49 +1,23 @@
 import datetime
 
-from graphene import Field, ResolveInfo
+from graphene import Schema, Field, ResolveInfo, ObjectType
 from graphene.types.inputobjecttype import InputObjectType
 from py.test import raises
 from py.test import mark
 from rest_framework import serializers
 
+from .conftest import (
+    CreateMyModelMutation,
+    UpdateMyModelMutation,
+    MyModelSerializer,
+    MyFakeModelType,
+)
+from .. import relay
+from ...registry import reset_global_registry
 from ...types import DjangoObjectType
 from ..models import MyFakeModel
-from ..mutation import SerializerMutation
+from ..mutation import SerializerCreateMutation, SerializerUpdateMutation
 
-
-def mock_info():
-    return ResolveInfo(
-        None,
-        None,
-        None,
-        None,
-        schema=None,
-        fragments=None,
-        root_value=None,
-        operation=None,
-        variable_values=None,
-        context={
-            'request': None,
-        },
-    )
-
-
-class MyModelSerializer(serializers.ModelSerializer):
-    write_model = serializers.CharField(write_only=True)
-
-    def create(self, validated_data):
-        validated_data.pop("write_model")
-        return super(MyModelSerializer, self).create(validated_data)
-
-    class Meta:
-        model = MyFakeModel
-        fields = "__all__"
-        read_only_fields = ("created",)
-
-
-class MyModelMutation(SerializerMutation):
-    class Meta:
-        serializer_class = MyModelSerializer
 
 
 class MySerializer(serializers.Serializer):
@@ -57,20 +31,30 @@ class MySerializer(serializers.Serializer):
         return validated_data
 
 
-def test_needs_serializer_class():
+def test_create_needs_serializer_class():
     with raises(Exception) as exc:
 
-        class MyMutation(SerializerMutation):
+        class MyMutation(SerializerCreateMutation):
             pass
 
-    assert str(exc.value) == "serializer_class is required for the SerializerMutation"
+    assert str(exc.value) == "serializer_class is required for SerializerMutation"
 
 
-def test_has_fields():
-    class MyMutation(SerializerMutation):
+def test_update_needs_serializer_class():
+    with raises(Exception) as exc:
+
+        class MyMutation(SerializerUpdateMutation):
+            pass
+
+    assert str(exc.value) == "serializer_class is required for SerializerMutation"
+
+
+def test_create_has_fields():
+    class MyMutation(SerializerCreateMutation):
         class Meta:
             serializer_class = MySerializer
 
+    assert "id" not in MyMutation._meta.fields
     assert "text" in MyMutation._meta.fields
     assert "model" in MyMutation._meta.fields
     assert "errors" in MyMutation._meta.fields
@@ -78,11 +62,37 @@ def test_has_fields():
     assert "write" not in MyMutation._meta.fields
 
 
-def test_has_input_fields():
-    class MyMutation(SerializerMutation):
+def test_update_create_has_fields():
+    class MyMutation(SerializerCreateMutation):
         class Meta:
             serializer_class = MySerializer
 
+    assert "id" not in MyMutation._meta.fields
+    assert "text" in MyMutation._meta.fields
+    assert "model" in MyMutation._meta.fields
+    assert "errors" in MyMutation._meta.fields
+    assert "read" in MyMutation._meta.fields
+    assert "write" not in MyMutation._meta.fields
+
+
+def test_create_has_input_fields():
+    class MyMutation(SerializerCreateMutation):
+        class Meta:
+            serializer_class = MySerializer
+
+    assert "id" not in MyMutation.Input._meta.fields
+    assert "text" in MyMutation.Input._meta.fields
+    assert "model" in MyMutation.Input._meta.fields
+    assert "write" in MyMutation.Input._meta.fields
+    assert "read" not in MyMutation.Input._meta.fields
+
+
+def test_update_has_input_fields():
+    class MyMutation(SerializerUpdateMutation):
+        class Meta:
+            serializer_class = MySerializer
+
+    assert "id" in MyMutation.Input._meta.fields
     assert "text" in MyMutation.Input._meta.fields
     assert "model" in MyMutation.Input._meta.fields
     assert "write" in MyMutation.Input._meta.fields
@@ -90,7 +100,7 @@ def test_has_input_fields():
 
 
 def test_exclude_fields():
-    class MyMutation(SerializerMutation):
+    class MyMutation(SerializerCreateMutation):
         class Meta:
             serializer_class = MyModelSerializer
             exclude_fields = ["created"]
@@ -104,12 +114,26 @@ def test_exclude_fields():
     assert "write_model" in MyMutation.Input._meta.fields
 
 
+def test_update_with_writeable_id_error():
+    class MyModelWriteIdSerializer(MyModelSerializer):
+        id = serializers.IntegerField()
+
+    with raises(Exception) as exc:
+
+        class MyMutation(SerializerUpdateMutation):
+            class Meta:
+                serializer_class = MyModelWriteIdSerializer
+
+    assert "can only have a read_only id field." in str(exc.value)
+
+
 def test_nested_model():
+    reset_global_registry()
     class MyFakeModelGrapheneType(DjangoObjectType):
         class Meta:
             model = MyFakeModel
 
-    class MyMutation(SerializerMutation):
+    class MyMutation(SerializerCreateMutation):
         class Meta:
             serializer_class = MySerializer
 
@@ -128,14 +152,14 @@ def test_nested_model():
     assert "write_model" in model_input_type._meta.fields
 
 
-def test_mutate_and_get_payload_success():
-    class MyMutation(SerializerMutation):
+def test_mutate_and_get_payload_success(mock_info):
+    class MyMutation(SerializerCreateMutation):
         class Meta:
             serializer_class = MySerializer
 
     result = MyMutation.mutate_and_get_payload(
         None,
-        mock_info(),
+        mock_info,
         **{
             "text": "value",
             "write": "write",
@@ -146,9 +170,9 @@ def test_mutate_and_get_payload_success():
 
 
 @mark.django_db
-def test_model_add_mutate_and_get_payload_success():
-    result = MyModelMutation.mutate_and_get_payload(
-        None, mock_info(), **{"cool_name": "Narf", "write_model": "Write Only"}
+def test_model_add_mutate_and_get_payload_success(mock_info):
+    result = CreateMyModelMutation.mutate_and_get_payload(
+        None, mock_info, **{"cool_name": "Narf", "write_model": "Write Only"}
     )
     assert result.errors is None
     assert result.cool_name == "Narf"
@@ -156,56 +180,49 @@ def test_model_add_mutate_and_get_payload_success():
 
 
 @mark.django_db
-def test_model_update_mutate_and_get_payload_success():
+def test_model_update_mutate_and_get_payload_success(mock_info):
     instance = MyFakeModel.objects.create(cool_name="Narf")
 
-    result = MyModelMutation.mutate_and_get_payload(
+    result = UpdateMyModelMutation.mutate_and_get_payload(
         None,
-        mock_info(),
-        **{"id": instance.id, "cool_name": "New Narf", "write_model": "Write Only"}
+        mock_info,
+        **{
+            "id": "TXlGYWtlTW9kZWxUeXBlOjE=",
+            "cool_name": "New Narf",
+            "write_model": "Write Only",
+        }
     )
     assert result.errors is None
     assert result.cool_name == "New Narf"
 
+    instance.refresh_from_db()
+    assert instance.cool_name == "New Narf"
+
 
 @mark.django_db
-def test_model_invalid_update_mutate_and_get_payload_success():
-    class InvalidModelMutation(SerializerMutation):
-        class Meta:
-            serializer_class = MyModelSerializer
-            model_operations = ["update"]
-
+def test_model_invalid_update_mutate_and_get_payload_success(mock_info):
     with raises(Exception) as exc:
-        result = InvalidModelMutation.mutate_and_get_payload(
-            None, mock_info(), **{"cool_name": "Narf"}
+        result = UpdateMyModelMutation.mutate_and_get_payload(
+            None, mock_info, **{"cool_name": "Narf"}
         )
 
     assert '"id" required' in str(exc.value)
 
 
-def test_mutate_and_get_payload_error():
-    class MyMutation(SerializerMutation):
+def test_mutate_and_get_payload_error(mock_info):
+    class MyMutation(SerializerCreateMutation):
         class Meta:
             serializer_class = MySerializer
 
     # missing required fields
-    result = MyMutation.mutate_and_get_payload(None, mock_info(), **{})
-    assert len(result.errors) > 0
+    result = MyMutation.mutate_and_get_payload(None, mock_info, **{})
+    assert len(result.errors) == 3
+    assert result.errors[0].field == "text"
+    assert str(result.errors[0].messages[0]) == "This field is required."
 
 
-def test_model_mutate_and_get_payload_error():
+def test_model_mutate_and_get_payload_error(mock_info):
     # missing required fields
-    result = MyModelMutation.mutate_and_get_payload(None, mock_info(), **{})
+    result = CreateMyModelMutation.mutate_and_get_payload(None, mock_info, **{})
     assert len(result.errors) > 0
-    assert result.errors[0].field == 'writeModel'
-
-
-def test_invalid_serializer_operations():
-    with raises(Exception) as exc:
-
-        class MyModelMutation(SerializerMutation):
-            class Meta:
-                serializer_class = MyModelSerializer
-                model_operations = ["Add"]
-
-    assert "model_operations" in str(exc.value)
+    assert result.errors[0].field == "writeModel"
